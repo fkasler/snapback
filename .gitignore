@@ -1,0 +1,11 @@
+notes.txt
+*.nessus
+*.xml
+report/
+node_modules/
+package-lock.json
+*test.js
+test.txt
+*.csv
+*.zip
+*_*-*-*_*-*-*.js

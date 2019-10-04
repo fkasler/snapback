@@ -1,0 +1,326 @@
+<!doctype html>
+<html>
+
+	<body style="background-color:#f2f2f2;">
+
+	<head>
+        <link rel="shortcut icon" href="favicon.ico">
+		<title>Snapback</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { font-family: "Courier", Serif; generic-family: monospace }
+      form { display:inline; }
+      #targets{ width:100%; }
+    </style>
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="text/javascript" src="./jquery.min.js"></script>
+    <script>
+      $(function () {
+        var socket = io();
+
+        socket.on('add_service', function(service){
+//          console.log(service)
+          add_service(service)
+        });
+
+        socket.on('show_error', function(url){
+          show_error(url)
+        });
+
+        socket.on('server_message', function(message){
+          if($(".server_message").length > 14){
+	    $(".server_message")[0].remove()
+	  }
+	  $('#server_log').append($('<li type="text" class="server_message">').text(message));
+        });
+
+        function show_error(url){
+          //don't repeat on rescans
+          if((typeof $("a[href$='" + url + "']")[0]) == 'undefined'){
+            $('#errors').append(` \
+              <tr id="${url}">\
+                <td><span>Error Capturing: </span><a class="url_link" target="_blank" href="${url}">${url}</a></td>\
+              </tr>\
+            `);
+          }
+        }
+
+        function add_service(service){
+          if(service.default_creds == 1){
+            default_creds = "checked"
+          }else{
+            default_creds = ""
+          }
+
+          if(service.viewed == 1){
+            viewed = "checked"
+          }else{
+            viewed = ""
+          }
+
+          if(service.auth_prompt == 1){
+            auth_prompt = "checked"
+          }else{
+            auth_prompt = ""
+          }
+          //remove it from the error list if it was there before
+          if((typeof $("a[href$='" + service.url + "']")[0]) != 'undefined'){
+            $("a[href$='" + service.url + "']")[0].remove()
+          }
+
+          //if it has the exact image as another service
+          if($(`#image_${service.image_hash}`).length > 0){
+             peer_count = $($($(`#image_${service.image_hash}`)[0]).next('table')[0]).children().length
+             if(peer_count == 1){
+               $($($(`#image_${service.image_hash}`)[0]).next('table')[0]).prepend(` \
+                  <tr>\
+                    <td align="right">Modify All</td>\
+                    <td align="right"><input type="text" class="mass_url_notes"></input></td>\
+                    <td align="right"><input type="text" class="mass_default_creds"></input></td>\
+                    <td align="right"><input type="checkbox" class="mass_auth_prompt"></input></td>\
+                    <td align="right"><input type="checkbox" class="mass_viewed_url"></input></td>\
+                  </tr>\
+               `);
+             }
+             $($($(`#image_${service.image_hash}`)[0]).next('table')[0]).append(` \
+                <tr id="${service.url}">\
+                  <td><a class="url_link" target="_blank" href="${service.url}">${service.url}</a></td>\
+                  <td><span>notes:</span><input type="text" class="url_notes" value="${service.notes}"></input></td>\
+                  <td><span>weak creds:</span><input type="text" class="default_creds" value="${service.default_creds}"></input></td>\
+                  <td><span>auth prompt:</span><input type="checkbox" class="auth_prompt" ${auth_prompt}></input></td>\
+                  <td><span>viewed:</span><input type="checkbox" class="viewed_url" ${viewed}></input></td>\
+                </tr>\
+            `);
+          //else if it also doesn't have the same html then it is unique
+          }else if($(`#${service.text_hash}`).length == 0){
+            $("#report").append(` \
+              <div id="service_${service.text_hash}">\
+                <img id="image_${service.image_hash}" src="${service.image_path}"></img>\
+                <table id="${service.text_hash}">\
+                  <tr id="${service.url}">\
+                    <td><a class="url_link" target="_blank" href="${service.url}">${service.url}</a></td>\
+                    <td><span>notes:</span><input type="text" class="url_notes" value="${service.notes}"></input></td>\
+                    <td><span>weak creds:</span><input type="text" class="default_creds" value="${service.default_creds}"></input></td>\
+                    <td><span>auth prompt:</span><input type="checkbox" class="auth_prompt" ${auth_prompt}></input></td>\
+                    <td><span>viewed:</span><input type="checkbox" class="viewed_url" ${viewed}></input></td>\
+                  </tr>\
+                </table>\
+              </div>\
+            `);
+          //otherwise it is not unique based on having the exact same html as another service
+          }else{
+            peer_count = $(`#${service.text_hash}`).children().length
+            if(peer_count == 1){
+              $(`#${service.text_hash}`).prepend(` \
+                <tr>\
+                  <td align="right">Modify All</td>\
+                  <td align="right"><input type="text" class="mass_url_notes"></input></td>\
+                  <td align="right"><input type="text" class="mass_default_creds"></input></td>\
+                  <td align="right"><input type="checkbox" class="mass_auth_prompt"></input></td>\
+                  <td align="right"><input type="checkbox" class="mass_viewed_url"></input></td>\
+                </tr>\
+             `);
+            }
+            $(`#${service.text_hash}`).append(` \
+                <tr id="${service.url}">\
+                  <td><a class="url_link" target="_blank" href="${service.url}">${service.url}</a></td>\
+                  <td><span>notes:</span><input type="text" class="url_notes" value="${service.notes}"></input></td>\
+                  <td><span>weak creds:</span><input type="text" class="default_creds" value="${service.default_creds}"></input></td>\
+                  <td><span>auth prompt:</span><input type="checkbox" class="auth_prompt" ${auth_prompt}></input></td>\
+                  <td><span>viewed:</span><input type="checkbox" class="viewed_url" ${viewed}></input></td>\
+                </tr>\
+            `);
+          }
+        }
+
+        $(document).on('click', '.url_link', function () {
+          //fix an issue for Greg
+          is_checked = $($(this).parent().parent().find(".viewed_url")[0]).is(':checked')
+          if(!is_checked){
+            $(this).parent().parent().find(".viewed_url")[0].click()
+          }
+        });
+
+        $(document).on('click', '.viewed_url', function () {
+          is_checked = $(this).is(':checked')
+          url = $(this).parent().parent()[0].id
+          if(is_checked){
+           socket.emit("update_record", {"url": url, "key": "viewed", "value": 1})
+          }else{
+           socket.emit("update_record", {"url": url, "key": "viewed", "value": 0})
+          }
+        });
+
+        $(document).on('click', '.mass_viewed_url', function () {
+          is_checked = $(this).is(':checked')
+          other_checkboxes = $(this).parent().parent().parent().find('.viewed_url')
+          $.each( other_checkboxes, function() {
+            if(($(this).is(':checked')) != is_checked){
+              $(this).click()
+            }
+          })
+        });
+
+        $(document).on('focusout', '.default_creds', function () {
+          creds = $(this).val()
+          url = $(this).parent().parent()[0].id
+          socket.emit("update_record", {"url": url, "key": "default_creds", "value": creds})
+        });
+
+        $(document).on('focusout', '.mass_default_creds', function () {
+          creds = $(this).val()
+          other_inputs = $(this).parent().parent().parent().find('.default_creds')
+          $.each( other_inputs, function() {
+            $(this).val(creds)
+            url = $(this).parent().parent()[0].id
+            socket.emit("update_record", {"url": url, "key": "default_creds", "value": creds})
+          })
+        });
+
+        $(document).on('click', '.auth_prompt', function () {
+          is_checked = $(this).is(':checked')
+          url = $(this).parent().parent()[0].id
+          if(is_checked){
+           socket.emit("update_record", {"url": url, "key": "auth_prompt", "value": 1})
+          }else{
+           socket.emit("update_record", {"url": url, "key": "auth_prompt", "value": 0})
+          }
+        });
+
+        $(document).on('click', '.mass_auth_prompt', function () {
+          is_checked = $(this).is(':checked')
+          other_checkboxes = $(this).parent().parent().parent().find('.auth_prompt')
+          $.each( other_checkboxes, function() {
+            if(($(this).is(':checked')) != is_checked){
+              $(this).click()
+            }
+          })
+        });
+
+        $(document).on('focusout', '.url_notes', function () {
+          notes = $(this).val()
+          url = $(this).parent().parent()[0].id
+          socket.emit("update_record", {"url": url, "key": "notes", "value": notes})
+        });
+
+        $(document).on('focusout', '.mass_url_notes', function () {
+          notes = $(this).val()
+          other_inputs = $(this).parent().parent().parent().find('.url_notes')
+          $.each( other_inputs, function() {
+            $(this).val(notes)
+            url = $(this).parent().parent()[0].id
+            socket.emit("update_record", {"url": url, "key": "notes", "value": notes})
+          })
+        });
+
+        $("#select_file").click(function(){
+          use_proxy = $('#proxy_checkbox').is(':checked')
+          use_no_sandbox = $('#sandbox_checkbox').is(':checked')
+          scrape_emails = $('#scrape_emails_checkbox').is(':checked')
+          proxy_setting = $('#proxy_input').val()
+          delay_setting = $('#delay_input').val()
+          file_path = prompt("Provide a full file path to your input file:")
+          socket.emit('process_file', {"file_path": file_path, "use_proxy": use_proxy, "proxy_setting": proxy_setting, "delay_setting": delay_setting, "scrape_emails": scrape_emails, "use_no_sandbox": use_no_sandbox})
+        });
+
+        $("#pause_scan").click(function(){
+          socket.emit('pause_scan')
+        });
+
+        $("#resume_scan").click(function(){
+          use_proxy = $('#proxy_checkbox').is(':checked')
+          use_no_sandbox = $('#sandbox_checkbox').is(':checked')
+          scrape_emails = $('#scrape_emails_checkbox').is(':checked')
+          proxy_setting = $('#proxy_input').val()
+          delay_setting = $('#delay_input').val()
+          socket.emit('resume_scan', {"use_proxy": use_proxy, "proxy_setting": proxy_setting, "delay_setting": delay_setting, "scrape_emails": scrape_emails, "use_no_sandbox": use_no_sandbox})
+        });
+
+        $("#scan_errors").click(function(){
+          use_proxy = $('#proxy_checkbox').is(':checked')
+          use_no_sandbox = $('#sandbox_checkbox').is(':checked')
+          scrape_emails = $('#scrape_emails_checkbox').is(':checked')
+          proxy_setting = $('#proxy_input').val()
+          delay_setting = $('#delay_input').val()
+          socket.emit('scan_errors', {"use_proxy": use_proxy, "proxy_setting": proxy_setting, "delay_setting": delay_setting, "scrape_emails": scrape_emails, "use_no_sandbox": use_no_sandbox})
+        });
+
+        $("#auth_prompts_only").click(function(){
+          $("#errors").empty()
+          $("#report").empty()
+          $.getJSON( "/auth_prompts", function( data ) {
+            $.each( data, function(key, val ) {
+              add_service(val)
+            });
+          });
+        });
+
+        $("#unviewed_only").click(function(){
+          $("#errors").empty()
+          $("#report").empty()
+          $.getJSON( "/unviewed_services", function( data ) {
+            $.each( data, function(key, val ) {
+              add_service(val)
+            });
+          });
+        });
+
+        $("#notes_only").click(function(){
+          $("#errors").empty()
+          $("#report").empty()
+          $.getJSON( "/notes_services", function( data ) {
+            $.each( data, function(key, val ) {
+              add_service(val)
+            });
+          });
+        });
+
+        $("#show_all").click(function(){
+          location.reload();
+        });
+
+        $("#csv_export").click(function(){
+          csv_name = prompt("Provide a base name for your results .csv file:")
+          socket.emit('csv_export', {"csv_name": csv_name + ".csv"})
+        });
+
+        $("#report_export").click(function(){
+          zip_name = prompt("Provide a base name for your results .zip file:")
+          socket.emit('report_export', {"zip_name": zip_name + ".zip"})
+        });
+
+        $.getJSON( "/all_services", function( data ) {
+          $.each( data, function(key, val ) {
+            if(val.captured == 1){
+              add_service(val)
+            }else{
+              show_error(val.url)
+            }
+          });
+        });
+      });
+    </script>
+  </head>
+  <body>
+    <button id="select_file">Select Input File</button>
+    <span>Use Proxy:</span><input type="checkbox" id="proxy_checkbox"></input>
+    <input type="text" id="proxy_input" placeholder="socks5://localhost:8080"></input>
+    <span>Delay:</span><input type="text" id="delay_input" value="0" style="width: 3ch;"></input>
+    <span>No Sandbox (dangerous):</span><input type="checkbox" id="sandbox_checkbox"></input>
+    <span>Scrape Emails:</span><input type="checkbox" id="scrape_emails_checkbox"></input>
+    <button id="pause_scan">Pause Scan</button>
+    <button id="resume_scan">Resume Scan</button>
+    <button id="scan_errors">Rescan Errors</button>
+    <button id="show_all">Show All</button>
+    <button id="auth_prompts_only">Show Auth Prompts Only</button>
+    <button id="unviewed_only">Show Unviewed Only</button>
+    <button id="notes_only">Show Weak/Notes Only</button>
+    <button id="csv_export">Export CSV</button>
+    <button id="report_export">Report Export</button>
+    <ul id="server_log"></ul>
+    <table id="errors">
+    </table>
+    <div id="report">
+    </div>
+  </body>
+</html>
