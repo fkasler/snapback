@@ -1,6 +1,6 @@
 Snapback
 ============
-Snapback is a HTTP(s) screenshot tool written to take advantage of asynchonous threading in Nodejs. It's like EyeWitness, gowitness, and rawr, etc. but generally faster, and compatible with MacOS, Windows, and Linux.
+Snapback is a HTTP(s) screenshot tool written to take advantage of asynchronous threading in Nodejs. It's like EyeWitness, gowitness, and rawr, etc. but generally faster, and compatible with MacOS, Windows, and Linux.
 
 Installation 
 ============
