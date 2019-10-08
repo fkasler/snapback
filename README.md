@@ -9,7 +9,7 @@ I recommend running this tool on the native OS, but it works fine on a VM as wel
 To install dependencies:
 
 ```
-git clone https://git.issgs.net/fkasler/snapback.git
+git clone https://github.com/fkasler/snapback.git
 cd snapback
 npm install
 ```
