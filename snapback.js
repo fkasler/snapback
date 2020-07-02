@@ -142,10 +142,11 @@ scrape_emails = false
 async function getPic(browser, page, url, io) {
   try{
     await page.setViewport({width: 1000, height: 500})
-    await page.goto(url);
+    await page.goto(url, {waitUntil: 'load', timeout: 7000});
     let file_name = url.replace(/[\.\/:\?\&=]+/g,"_")
     await wait(delay_setting);
-    await page.screenshot({path: 'report/' + file_name + '.png'});
+    //Shout out to Sedric Louissaint for the the help on this... He picked the delay at 2100 ¯\_(ツ)_/¯
+    await Promise.race([page.screenshot({path: 'report/' + file_name + '.png'}), new Promise((resolve, reject) => setTimeout(reject, 2100))]);
     update_record(url,"image_path",'report/' + file_name + '.png')
     md5File('report/' + file_name + '.png', (err, hash) => {
       if (err) {
