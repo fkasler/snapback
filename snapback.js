@@ -21,18 +21,29 @@ email_file = fs.createWriteStream("./report/emails.txt", {flags:'a'});
 // =======================================================
 // Connect to/create the database
 // =======================================================
-var sqlite3 = require('sqlite3').verbose();
-db = new sqlite3.Database('./report/snapback.db', sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
-  if (err) {
-    console.error(err.message);
-  }
-  console.log('Connected to the snapback database.');
-});
+const Database = require('better-sqlite3');
+//db = new Database('./report/snapback.db', { verbose: console.log });
+db = new Database('./report/snapback.db');
 
 //create the db if it doesn't exist.
-db.serialize(function() {
-  db.run("CREATE TABLE IF NOT EXISTS services (url TEXT NOT NULL UNIQUE, image_path TEXT, image_hash TEXT, text_path TEXT, text_hash TEXT, text_size INTEGER, captured INTEGER, error INTEGER, viewed INTEGER, default_creds TEXT, auth_prompt INTEGER, notes TEXT)");
-});
+let db_setup = db.prepare(`
+  CREATE TABLE IF NOT EXISTS services (
+    url TEXT NOT NULL UNIQUE,
+    image_path TEXT,
+    image_hash TEXT,
+    text_path TEXT,
+    text_hash TEXT,
+    text_size INTEGER,
+    captured INTEGER,
+    error INTEGER,
+    viewed INTEGER,
+    default_creds TEXT,
+    auth_prompt INTEGER,
+    notes TEXT
+  )`
+);
+
+db_setup.run()
 
 //nessus parsing functions
 xml_buffer = ''
@@ -119,11 +130,35 @@ function parseNmapPort(host, item, browser, io){
 
 function push_to_queue(url, browser, io){
   if(!allServices.includes(url)){
-    let stmt = db.prepare("INSERT INTO services VALUES (?,?,?,?,?,?,?,?,?,?,?,?)");
-    stmt.run([url, '', '', '', '', '', 0, 0, 0, '', 0, ''], function(err){
-      //must not be unique. Exit function early
-      //console.log("duplicate entry:" + url)
-      return
+    let stmt = db.prepare(`
+      INSERT INTO services VALUES (
+        $url,
+        $image_path,
+        $image_hash,
+        $text_path,
+        $text_hash,
+        $text_size,
+        $captured,
+        $error,
+        $viewed,
+        $default_creds,
+        $auth_prompt,
+        $notes
+      )
+    `);
+    stmt.run({
+      "url": url,
+      "image_path": '',
+      "image_hash": '',
+      "text_path": '',
+      "text_hash": '',
+      "text_size": 0,
+      "captured": 0,
+      "error": 0,
+      "viewed": 0,
+      "default_creds": '',
+      "auth_prompt": 0,
+      "notes": ''
     })
     //if there weren't any errors, then continue pushing to queue
     myQueue.push(url);
@@ -177,7 +212,7 @@ async function getPic(browser, page, url, io) {
         console.log("problem getting file stats for:" + file_name)
       }
       stats = fs.statSync('report/' + file_name + '.txt');
-      update_record(url,"text_size",stats.size,)
+      update_record(url,"text_size",stats.size)
       //call display here to make sure we have logged the right stats first
       update_record(url,"text_hash",hash,function(){
         display_service(url, io)
@@ -200,18 +235,17 @@ async function getPic(browser, page, url, io) {
 }
 
 async function display_service(url, io){
-  db.get("SELECT * FROM services WHERE url = '" + url +"'", (err, row)=>{
-    io.emit('add_service', row)
-  });
+  let stmt = db.prepare(`SELECT * FROM services WHERE url = $url`);
+  let row = stmt.get({"url": url})
+  io.emit('add_service', row)
 }
 
 async function update_record(url,key,value,callback){
-    let stmt = db.prepare("UPDATE services SET (" + key + ") = (?) WHERE url = '" + url + "'");
-    stmt.run(value, function(){
-      if((typeof callback) != 'undefined'){
-        stmt.finalize(callback())
-      }
-    })
+  let stmt = db.prepare(`UPDATE services SET (` + key + `) = ($value) WHERE url = '` + url + `'`);
+  stmt.run({"value": value})
+  if((typeof callback) != 'undefined'){
+    callback()
+  }
 }
 
 //helper for timeouts
@@ -401,55 +435,31 @@ async function resume_scan(request, io) {
   });
 
   app.get('/all_services', function(req, res){
-    all_services = []
-    db.serialize(function() {
-      var sql = "SELECT * FROM services WHERE captured = 1 OR error = 1"
-      db.each(sql, function(err, row) {
-        all_services.push(row)
-      }, function(){
-        res.write(JSON.stringify(all_services))
-        res.end()
-      });
-    });
+    let stmt = db.prepare("SELECT * FROM services WHERE captured = 1 OR error = 1")
+    let all_services = stmt.all()
+    res.write(JSON.stringify(all_services))
+    res.end()
   });
 
   app.get('/auth_prompts', function(req, res){
-    all_services = []
-    db.serialize(function() {
-      var sql = "SELECT * FROM services WHERE auth_prompt = 1"
-      db.each(sql, function(err, row) {
-        all_services.push(row)
-      }, function(){
-        res.write(JSON.stringify(all_services))
-        res.end()
-      });
-    });
+    let stmt = db.prepare("SELECT * FROM services WHERE auth_prompt = 1")
+    let all_services = stmt.all()
+    res.write(JSON.stringify(all_services))
+    res.end()
   });
 
   app.get('/unviewed_services', function(req, res){
-    all_services = []
-    db.serialize(function() {
-      var sql = "SELECT * FROM services WHERE viewed = 0 AND error = 0"
-      db.each(sql, function(err, row) {
-        all_services.push(row)
-      }, function(){
-        res.write(JSON.stringify(all_services))
-        res.end()
-      });
-    });
+    let stmt = db.prepare("SELECT * FROM services WHERE viewed = 0 AND error = 0")
+    let all_services = stmt.all()
+    res.write(JSON.stringify(all_services))
+    res.end()
   });
 
   app.get('/notes_services', function(req, res){
-    all_services = []
-    db.serialize(function() {
-      var sql = "SELECT * FROM services WHERE notes != '' OR default_creds != ''"
-      db.each(sql, function(err, row) {
-        all_services.push(row)
-      }, function(){
-        res.write(JSON.stringify(all_services))
-        res.end()
-      });
-    });
+    let stmt = db.prepare("SELECT * FROM services WHERE notes != '' OR default_creds != ''")
+    let all_services = stmt.all()
+    res.write(JSON.stringify(all_services))
+    res.end()
   });
 
   io.on('connection', function(socket){
@@ -466,27 +476,15 @@ async function resume_scan(request, io) {
     });
 
     socket.on('resume_scan', function(request){
-      myQueue = []
-      db.serialize(function() {
-        var sql = "SELECT * FROM services WHERE captured = 0 AND error = 0"
-        db.each(sql, function(err, row) {
-          myQueue.push(row.url)
-        }, function(){
-          resume_scan(request, io)
-        });
-      });
+      let stmt = db.prepare("SELECT * FROM services WHERE captured = 0 AND error = 0").pluck()
+      myQueue = stmt.all()
+      resume_scan(request, io)
     });
 
     socket.on('scan_errors', function(request){
-      myQueue = []
-      db.serialize(function() {
-        var sql = "SELECT * FROM services WHERE error = 1"
-        db.each(sql, function(err, row) {
-          myQueue.push(row.url)
-        }, function(){
-          resume_scan(request, io)
-        });
-      });
+      let stmt = db.prepare("SELECT url FROM services WHERE error = 1").pluck()
+      myQueue = stmt.all()
+      resume_scan(request, io)
     });
 
     socket.on('csv_export', function(request){
@@ -494,14 +492,12 @@ async function resume_scan(request, io) {
       let fileOutput = fs.createWriteStream('./' + request.csv_name);
 
       fileOutput.write(`"url","image_path","image_hash","text_path","text_hash","text_size","captured","error","viewed","default_creds","auth_prompt","notes"\n`)
-      db.serialize(function() {
-        var sql = "SELECT * FROM services"
-        db.each(sql, function(err, row) {
-          fileOutput.write(`"${row.url}","${row.image_path}","${row.image_hash}","${row.text_path}","${row.text_hash}","${row.text_size}","${row.captured}","${row.error}","${row.viewed}","${row.default_creds}","${row.auth_prompt}","${row.notes}"\n`)
-        }, function(){
-          fileOutput.close();
-        });
+      let stmt = db.prepare("SELECT * FROM services")
+      let full_db = stmt.all()
+      full_db.forEach(function(row) {
+        fileOutput.write(`"${row.url}","${row.image_path}","${row.image_hash}","${row.text_path}","${row.text_hash}","${row.text_size}","${row.captured}","${row.error}","${row.viewed}","${row.default_creds}","${row.auth_prompt}","${row.notes}"\n`)
       });
+      fileOutput.close();
     });
 
     socket.on('report_export', function(request){
@@ -522,14 +518,12 @@ async function resume_scan(request, io) {
 
       archive.glob('./report/snapback.db', false)
 
-      db.serialize(function() {
-        var sql = "SELECT * FROM services WHERE default_creds != '' OR auth_prompt = 1"
-        db.each(sql, function(err, row) {
-          archive.glob('./' + row.image_path, false)
-        }, function(){
-          archive.finalize();
-        });
+      let stmt = db.prepare("SELECT * FROM services WHERE default_creds != '' OR auth_prompt = 1")
+      let rows = stmt.all()
+      rows.forEach(function(row){
+        archive.glob('./' + row.image_path, false)
       });
+      archive.finalize();
     });
 
   });
