@@ -54,10 +54,11 @@ function parseReportHost(xml, browser, io){
     let host = report_host.ReportHost.$.name
     let report_items = report_host.ReportHost.ReportItem
     try{
-      Object.keys(report_items).forEach(function(key) {
-        parseReportItem(host, report_items[key], browser, io)
+      report_items.forEach(function(item){
+        parseReportItem(host, item, browser, io)
       })
     }catch(err){
+      //console.log(err)
       //host must not have any findings
     }
   });
@@ -67,16 +68,16 @@ function parseReportItem(host, item, browser, io){
   let plugin_id = item.$.pluginID
   let service = item.$.svc_name
   let port = item.$.port
-  if(((port == '443') || (port == '8443')) || (service == "https?")){
+  if(((port == '443') || (port == '8443')) || (service.includes("https")) || (service.includes("ssl")) || (service.includes("tls"))){
     push_to_queue("https://" + host + ":" + port, browser, io);
-  }else if((plugin_id == '22964') & (service == "www")){
+  }else if((plugin_id == '22964') & (service.includes("www"))){
     //console.log(item.plugin_output);
     if(item.plugin_output.toString().match(/TLS|SSL/i)){
       push_to_queue("https://" + host + ":" + port, browser, io);
     }else{
       push_to_queue("http://" + host + ":" + port, browser, io);
     }
-  }else if((service == "www") || (service == "http?")){
+  }else if((service.includes("www")) || (service.includes("http"))){
     push_to_queue("http://" + host + ":" + port, browser, io);
   //matching Chris Truncer's EyeWitness logic of checking for port 80 on all RDP and VNC hosts
   }//else if((service == "msrdp") || (port == "3389") || (service == "vnc")){
