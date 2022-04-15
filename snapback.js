@@ -7,23 +7,38 @@ var app = require('express')();
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
 var archiver = require('archiver');
+var args = require('minimist')(process.argv.slice(2));
+const yaml = require('js-yaml');
+
+var report = './report' // Default
+
+if (args['config']) {
+  try {
+    const doc = yaml.load(fs.readFileSync(args['config'], 'utf8'));
+    report = doc['report_location'];
+  }
+  catch (err) {
+    console.log(err)
+  }
+}
+
 
 //set up a report directory if it doesn't exist
 try{
-  fs.mkdirSync('./report')
+  fs.mkdirSync(report)
 }catch(err){
   //must exist already. We do it this way to avoid a race condition of checking the existence of the dir before trying to write to it
 }
 
 //create a write stream to store scraped emails
-email_file = fs.createWriteStream("./report/emails.txt", {flags:'a'});
+email_file = fs.createWriteStream(report + "/emails.txt", {flags:'a'});
 
 // =======================================================
 // Connect to/create the database
 // =======================================================
 const Database = require('better-sqlite3');
 //db = new Database('./report/snapback.db', { verbose: console.log });
-db = new Database('./report/snapback.db');
+db = new Database(report + '/snapback.db');
 
 //create the db if it doesn't exist.
 let db_setup = db.prepare(`
@@ -517,7 +532,7 @@ async function resume_scan(request, io) {
         throw err;
       });
 
-      archive.glob('./report/snapback.db', false)
+      archive.glob(report + '/snapback.db', false)
 
       let stmt = db.prepare("SELECT * FROM services WHERE default_creds != '' OR auth_prompt = 1")
       let rows = stmt.all()
