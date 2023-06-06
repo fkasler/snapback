@@ -85,7 +85,7 @@ function parseReportItem(host, item, browser, io){
   let port = item.$.port
   if(((port == '443') || (port == '8443')) || (service.includes("https")) || (service.includes("ssl")) || (service.includes("tls"))){
     push_to_queue("https://" + host + ":" + port, browser, io);
-  }else if((plugin_id == '22964') & (service.includes("www"))){
+  }else if(plugin_id == '22964'){
     //console.log(item.plugin_output);
     if(item.plugin_output.toString().match(/TLS|SSL/i)){
       push_to_queue("https://" + host + ":" + port, browser, io);
