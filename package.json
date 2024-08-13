@@ -1,23 +1,30 @@
 {
   "name": "Snapback",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Super Fast HTTP Screenshots",
-  "main": "snapback.js",
+  "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Forrest Kasler (ph3eds) @fkasler",
   "license": "ISC",
+  "type": "module",
   "dependencies": {
-    "archiver": "^3.1.1",
-    "better-sqlite3": "^7.1.4",
-    "express": "^4.17.1",
-    "jquery": "^3.4.1",
-    "js-yaml": "^4.1.0",
+    "archiver": "^7.0.1",
+    "better-sqlite3": "^11.1.2",
+    "dateformat": "^5.0.3",
+    "fastify": "^4.28.1",
+    "fastify-socket.io": "^5.0.0",
+    "glob-promise": "^6.0.7",
+    "got": "^14.4.1",
+    "jquery": "^3.7.1",
     "line-reader": "^0.4.0",
-    "md5-file": "^4.0.0",
-    "puppeteer": "^1.20.0",
-    "socket.io": "^2.3.0",
-    "xml2js": "^0.4.22"
+    "md5-file": "^5.0.0",
+    "p-queue": "^8.0.1",
+    "puppeteer": "^22.13.0",
+    "socket.io": "^4.7.5",
+    "socks-proxy-agent": "^8.0.4",
+    "xml2js": "^0.6.2",
+    "yaml": "^2.4.5"
   }
 }

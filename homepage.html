@@ -1,99 +1,154 @@
 <!doctype html>
-<html>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<html lang="en">
 
-	<body style="background-color:#f2f2f2;">
+<head>
+  <meta charset="utf-8">
+</head>
 
-	<head>
-        <link rel="shortcut icon" href="favicon.ico">
-		<title>Snapback</title>
-    <style>
-      * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { font-family: "Courier", Serif; generic-family: monospace }
-      form { display:inline; }
-      #targets{ width:100%; }
-    </style>
-    <script src="/socket.io/socket.io.js"></script>
-    <script type="text/javascript" src="./jquery.min.js"></script>
-    <script>
-      $(function () {
-        var socket = io();
+<head></head>
 
-        socket.on('add_service', function(service){
-//          console.log(service)
-          add_service(service)
-        });
+<body style="background-color:#f2f2f2;">
 
-        socket.on('show_error', function(url){
-          show_error(url)
-        });
 
-        socket.on('server_message', function(message){
-          if($(".server_message").length > 14){
-	    $(".server_message")[0].remove()
-	  }
-	  $('#server_log').append($('<li type="text" class="server_message">').text(message));
-        });
+  <link rel="shortcut icon" href="favicon.ico">
+  <title>Snapback</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-        function show_error(url){
-          //don't repeat on rescans
-          if((typeof $("a[href$='" + url + "']")[0]) == 'undefined'){
-            $('#errors').append(` \
-              <tr id="${url}">\
-                <td><span>Error Capturing: </span><a class="url_link" target="_blank" href="${url}">${url}</a></td>\
-              </tr>\
-            `);
-          }
+    body {
+      font-family: "Courier", Serif;
+      generic-family: monospace
+    }
+
+    form {
+      display: inline;
+    }
+
+    #timeout_input {
+      width: 3ch;
+    }
+
+    #targets {
+      width: 100%;
+    }
+  </style>
+  <script src="/socket.io/socket.io.js"></script>
+  <script type="text/javascript" src="./jquery.min.js"></script>
+  <script>
+    $(function () {
+
+      var error_count = 0
+
+      var socket = io()
+
+      var tag_counts = [0]
+
+      socket.on('update_service', function (update) {
+        update_service(update)
+      })
+
+      socket.on('add_service', function (service) {
+        add_service(service)
+      })
+
+      socket.on('show_error', function (url) {
+        show_error(url)
+      })
+
+      socket.on('server_message', function (message) {
+        if ($(".server_message").length > 14) {
+          $(".server_message")[0].remove()
+        }
+        $('#server_log').append($('<li type="text" class="server_message">').text(message))
+      })
+
+      function show_error(url) {
+        //don't repeat on rescans
+        //increment error count
+        error_count += 1
+        //display the error count inside the button
+        $("#scan_errors").text(`Rescan Errors (${error_count})`)
+        // if ((typeof $("a[href$='" + url + "']")[0]) == 'undefined') {
+        //   $('#errors').append(` \
+        //       <tr id="${url}">\
+        //         <td><span>Error Capturing: </span><a class="url_link" target="_blank" href="${url}">${url}</a></td>\
+        //       </tr>\
+        //     `)
+        // }
+      }
+
+      function update_service(update) {
+        let service = $("#" + $.escapeSelector(update.service))[0]
+        let field = service.getElementsByClassName(update.field)[0]
+        field.value = update.value
+      }
+
+      function add_service(service) {
+        //console.log(service)
+        if (service.default_creds == 1) {
+          default_creds = "checked"
+        } else {
+          default_creds = ""
         }
 
-        function add_service(service){
-          if(service.default_creds == 1){
-            default_creds = "checked"
-          }else{
-            default_creds = ""
-          }
+        if (service.viewed == 1) {
+          viewed = "checked"
+        } else {
+          viewed = ""
+        }
 
-          if(service.viewed == 1){
-            viewed = "checked"
-          }else{
-            viewed = ""
-          }
+        if (service.auth_prompt == 1) {
+          auth_prompt = "checked"
+        } else {
+          auth_prompt = ""
+        }
+        //remove it from the error list if it was there before
+        if ((typeof $("a[href$='" + service.url + "']")[0]) != 'undefined') {
+          $("a[href$='" + service.url + "']")[0].remove()
+        }
 
-          if(service.auth_prompt == 1){
-            auth_prompt = "checked"
-          }else{
-            auth_prompt = ""
-          }
-          //remove it from the error list if it was there before
-          if((typeof $("a[href$='" + service.url + "']")[0]) != 'undefined'){
-            $("a[href$='" + service.url + "']")[0].remove()
-          }
-
-          //if it has the exact image as another service
-          if($(`#image_${service.image_hash}`).length > 0){
-             peer_count = $($($(`#image_${service.image_hash}`)[0]).next('table')[0]).children().length
-             if(peer_count == 1){
-               $($($(`#image_${service.image_hash}`)[0]).next('table')[0]).prepend(` \
+        //if it has the exact image as another service
+        if ($(`#image_${service.image_hash}`).length > 0) {
+          peer_count = $($($(`#image_${service.image_hash}`)[0]).next('table')[0]).children().length
+          if (peer_count == 1) {
+            $($($(`#image_${service.image_hash}`)[0]).next('table')[0]).prepend(` \
                   <tr>\
                     <td align="right">Modify All</td>\
                     <td align="right"><input type="text" class="mass_url_notes"></input></td>\
                     <td align="right"><input type="text" class="mass_default_creds"></input></td>\
                     <td align="right"><input type="checkbox" class="mass_auth_prompt"></input></td>\
                     <td align="right"><input type="checkbox" class="mass_viewed_url"></input></td>\
+                    <td align="right"></td>\
                   </tr>\
-               `);
-             }
-             $($($(`#image_${service.image_hash}`)[0]).next('table')[0]).append(` \
+               `)
+          }
+          $($($(`#image_${service.image_hash}`)[0]).next('table')[0]).append(` \
                 <tr id="${service.url}">\
                   <td><a class="url_link" target="_blank" href="${service.url}">${service.url}</a></td>\
                   <td><span>notes:</span><input type="text" class="url_notes" value="${service.notes}"></input></td>\
                   <td><span>weak creds:</span><input type="text" class="default_creds" value="${service.default_creds}"></input></td>\
                   <td><span>auth prompt:</span><input type="checkbox" class="auth_prompt" ${auth_prompt}></input></td>\
                   <td><span>viewed:</span><input type="checkbox" class="viewed_url" ${viewed}></input></td>\
+                  <td></input><button class="gen_module">Generate Bruteforce Module</button></td>\
                 </tr>\
-            `);
+            `)
           //else if it also doesn't have the same html then it is unique
-          }else if($(`#${service.text_hash}`).length == 0){
-            $("#report").append(` \
+        } else if ($(`#${service.text_hash}`).length == 0) {
+          if (tag_counts.indexOf(service.num_tags) == -1) {
+            tag_counts.push(service.num_tags)
+            tag_counts = tag_counts.sort(function (a, b) { return b - a })
+            let new_element_placement = tag_counts.indexOf(service.num_tags)
+            //console.log(new_element_placement)
+            $(`#report > div:nth-child(${new_element_placement + 1})`).before(` \
+                <div id="num_tags_${service.num_tags}"></div>
+              `)
+          }
+          $(`#num_tags_${service.num_tags}`).append(` \
               <div id="service_${service.text_hash}">\
                 <img id="image_${service.image_hash}" src="${service.image_path}"></img>\
                 <table id="${service.text_hash}">\
@@ -102,225 +157,304 @@
                     <td><span>notes:</span><input type="text" class="url_notes" value="${service.notes}"></input></td>\
                     <td><span>weak creds:</span><input type="text" class="default_creds" value="${service.default_creds}"></input></td>\
                     <td><span>auth prompt:</span><input type="checkbox" class="auth_prompt" ${auth_prompt}></input></td>\
-                    <td><span>viewed:</span><input type="checkbox" class="viewed_url" ${viewed}></input></td>\
+                    <td><span>viewed:</span><input type="checkbox" class="viewed_url" ${viewed}></td>\
+                    <td></input><button class="gen_module">Generate Bruteforce Module</button></td>\
                   </tr>\
                 </table>\
               </div>\
-            `);
+            `)
           //otherwise it is not unique based on having the exact same html as another service
-          }else{
-            peer_count = $(`#${service.text_hash}`).children().length
-            if(peer_count == 1){
-              $(`#${service.text_hash}`).prepend(` \
+        } else {
+          peer_count = $(`#${service.text_hash}`).children().length
+          if (peer_count == 1) {
+            $(`#${service.text_hash}`).prepend(` \
                 <tr>\
                   <td align="right">Modify All</td>\
                   <td align="right"><input type="text" class="mass_url_notes"></input></td>\
                   <td align="right"><input type="text" class="mass_default_creds"></input></td>\
                   <td align="right"><input type="checkbox" class="mass_auth_prompt"></input></td>\
                   <td align="right"><input type="checkbox" class="mass_viewed_url"></input></td>\
+                  <td align="right"></td>\
                 </tr>\
-             `);
-            }
-            $(`#${service.text_hash}`).append(` \
+             `)
+          }
+          $(`#${service.text_hash}`).append(` \
                 <tr id="${service.url}">\
                   <td><a class="url_link" target="_blank" href="${service.url}">${service.url}</a></td>\
                   <td><span>notes:</span><input type="text" class="url_notes" value="${service.notes}"></input></td>\
                   <td><span>weak creds:</span><input type="text" class="default_creds" value="${service.default_creds}"></input></td>\
                   <td><span>auth prompt:</span><input type="checkbox" class="auth_prompt" ${auth_prompt}></input></td>\
                   <td><span>viewed:</span><input type="checkbox" class="viewed_url" ${viewed}></input></td>\
+                  <td></input><button class="gen_module">Generate Bruteforce Module</button></td>\
                 </tr>\
-            `);
+            `)
+        }
+      }
+
+      $(document).on('click', '.url_link', function () {
+        //fix an issue for Greg
+        is_checked = $($(this).parent().parent().find(".viewed_url")[0]).is(':checked')
+        if (!is_checked) {
+          $(this).parent().parent().find(".viewed_url")[0].click()
+        }
+      })
+
+      $(document).on('click', '.viewed_url', function () {
+        is_checked = $(this).is(':checked')
+        url = $(this).parent().parent()[0].id
+        if (is_checked) {
+          socket.emit("update_record", { "url": url, "key": "viewed", "value": 1 })
+        } else {
+          socket.emit("update_record", { "url": url, "key": "viewed", "value": 0 })
+        }
+      })
+
+      $(document).on('click', '.mass_viewed_url', function () {
+        is_checked = $(this).is(':checked')
+        other_checkboxes = $(this).parent().parent().parent().find('.viewed_url')
+        $.each(other_checkboxes, function () {
+          if (($(this).is(':checked')) != is_checked) {
+            $(this).click()
           }
+        })
+      })
+
+      $(document).on('focusout', '.default_creds', function () {
+        creds = $(this).val()
+        url = $(this).parent().parent()[0].id
+        socket.emit("update_record", { "url": url, "key": "default_creds", "value": creds })
+      })
+
+      $(document).on('focusout', '.mass_default_creds', function () {
+        creds = $(this).val()
+        other_inputs = $(this).parent().parent().parent().find('.default_creds')
+        $.each(other_inputs, function () {
+          $(this).val(creds)
+          url = $(this).parent().parent()[0].id
+          socket.emit("update_record", { "url": url, "key": "default_creds", "value": creds })
+        })
+      })
+
+      $(document).on('click', '.auth_prompt', function () {
+        is_checked = $(this).is(':checked')
+        url = $(this).parent().parent()[0].id
+        if (is_checked) {
+          socket.emit("update_record", { "url": url, "key": "auth_prompt", "value": 1 })
+        } else {
+          socket.emit("update_record", { "url": url, "key": "auth_prompt", "value": 0 })
+        }
+      })
+
+      $(document).on('click', '.mass_auth_prompt', function () {
+        is_checked = $(this).is(':checked')
+        other_checkboxes = $(this).parent().parent().parent().find('.auth_prompt')
+        $.each(other_checkboxes, function () {
+          if (($(this).is(':checked')) != is_checked) {
+            $(this).click()
+          }
+        })
+      })
+
+      $(document).on('click', '.gen_module', async function () {
+        var url = $(this).parent().parent()[0].id
+        // var template = prompt("What auth type will you need?:\na) basic/ntlm (default)\nb) POST auth\nc) Puppeteer (More complex)", "")
+        // if (template == 'b') {
+        //   template = 'post_auth'
+        // } else if (template == 'c') {
+        //   template = 'puppeteer_auth'
+        // } else {
+        //   template = 'basic_auth'
+        // }
+        var service_name = prompt("Enter service name", "")
+        const response = await fetch('/generate_bruteforce_module', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                service_name: service_name,
+                //template: template,
+                url: url
+            })
+        });
+
+        console.dir(response);
+
+        if (!response.ok) {
+            console.error('Network response was not ok', response.statusText);
+            return;
         }
 
-        $(document).on('click', '.url_link', function () {
-          //fix an issue for Greg
-          is_checked = $($(this).parent().parent().find(".viewed_url")[0]).is(':checked')
-          if(!is_checked){
-            $(this).parent().parent().find(".viewed_url")[0].click()
+        const data = await response.text();
+        alert(data);
+      })
+
+      $(document).on('focusout', '.url_notes', function () {
+        notes = $(this).val()
+        url = $(this).parent().parent()[0].id
+        socket.emit("update_record", { "url": url, "key": "notes", "value": notes })
+      })
+
+      $(document).on('focusout', '.mass_url_notes', function () {
+        notes = $(this).val()
+        other_inputs = $(this).parent().parent().parent().find('.url_notes')
+        $.each(other_inputs, function () {
+          $(this).val(notes)
+          url = $(this).parent().parent()[0].id
+          socket.emit("update_record", { "url": url, "key": "notes", "value": notes })
+        })
+      })
+
+      $("#select_file").click(function () {
+        use_proxy = $('#proxy_checkbox').is(':checked')
+        proxy_setting = $('#proxy_input').val()
+        timeout_setting = $('#timeout_input').val()
+        file_path = prompt("Provide a full file path to your input file:")
+        if (file_path == null) {
+          return
+        }
+        socket.emit('process_file', { "file_path": file_path, "use_proxy": use_proxy, "proxy_setting": proxy_setting, "timeout_setting": timeout_setting })
+      })
+
+      $("#pause_scan").click(function () {
+        socket.emit('pause_scan')
+      })
+
+      $("#resume_scan").click(function () {
+        use_proxy = $('#proxy_checkbox').is(':checked')
+        proxy_setting = $('#proxy_input').val()
+        timeout_setting = $('#timeout_input').val()
+        socket.emit('resume_scan', { "use_proxy": use_proxy, "proxy_setting": proxy_setting, "timeout_setting": timeout_setting })
+      })
+
+      $("#scan_errors").click(function () {
+        //reset error count
+        error_count = 0
+        //display normal rescan button
+        $("#scan_errors").text(`Rescan Errors`)
+        use_proxy = $('#proxy_checkbox').is(':checked')
+        proxy_setting = $('#proxy_input').val()
+        timeout_setting = $('#timeout_input').val()
+        socket.emit('scan_errors', { "use_proxy": use_proxy, "proxy_setting": proxy_setting, "timeout_setting": timeout_setting })
+      })
+
+      $("#auth_prompts_only").click(function () {
+        $("#errors").empty()
+        $("#report").empty()
+        $("#report").append(` \
+            <div id="num_tags_0"> \
+          `)
+        tag_counts = [0]
+        $.getJSON("/auth_prompts", function (data) {
+          $.each(data, function (key, val) {
+            add_service(val)
+          })
+        })
+      })
+
+      $("#unviewed_only").click(function () {
+        $("#errors").empty()
+        $("#report").empty()
+        $("#report").append(` \
+            <div id="num_tags_0"> \
+          `)
+        tag_counts = [0]
+        $.getJSON("/unviewed_services", function (data) {
+          $.each(data, function (key, val) {
+            add_service(val)
+          })
+        })
+      })
+
+      $("#notes_only").click(function () {
+        $("#errors").empty()
+        $("#report").empty()
+        $("#report").append(` \
+            <div id="num_tags_0"> \
+          `)
+        tag_counts = [0]
+        $.getJSON("/notes_services", function (data) {
+          $.each(data, function (key, val) {
+            add_service(val)
+          })
+        })
+      })
+
+      $("#show_all").click(function () {
+        location.reload()
+      })
+
+      $("#search").click(function () {
+        $("#errors").empty()
+        $("#report").empty()
+        $("#report").append(` \
+            <div id="num_tags_0"> \
+          `)
+        tag_counts = [0]
+        let title_search = $("#title_input").val()
+        let header_search = $("#header_input").val()
+        let metatag_search = $("#metatag_input").val()
+        $.getJSON(`/search?title=${title_search}&header=${header_search}&metatag=${metatag_search}`, function (data) {
+          $.each(data, function (key, val) {
+            add_service(val)
+          })
+        })
+      })
+
+      $("#csv_export").click(function () {
+        window.location = '/export'
+      })
+
+      $("#report_export").click(function () {
+        window.location = '/report'
+      })
+
+      $.getJSON("/all_services", function (data) {
+        $.each(data, function (key, val) {
+          if (val.captured == 1) {
+            add_service(val)
+          } else {
+            show_error(val.url)
           }
-        });
+        })
+      })
+    })
+  </script>
 
-        $(document).on('click', '.viewed_url', function () {
-          is_checked = $(this).is(':checked')
-          url = $(this).parent().parent()[0].id
-          if(is_checked){
-           socket.emit("update_record", {"url": url, "key": "viewed", "value": 1})
-          }else{
-           socket.emit("update_record", {"url": url, "key": "viewed", "value": 0})
-          }
-        });
 
-        $(document).on('click', '.mass_viewed_url', function () {
-          is_checked = $(this).is(':checked')
-          other_checkboxes = $(this).parent().parent().parent().find('.viewed_url')
-          $.each( other_checkboxes, function() {
-            if(($(this).is(':checked')) != is_checked){
-              $(this).click()
-            }
-          })
-        });
 
-        $(document).on('focusout', '.default_creds', function () {
-          creds = $(this).val()
-          url = $(this).parent().parent()[0].id
-          socket.emit("update_record", {"url": url, "key": "default_creds", "value": creds})
-        });
-
-        $(document).on('focusout', '.mass_default_creds', function () {
-          creds = $(this).val()
-          other_inputs = $(this).parent().parent().parent().find('.default_creds')
-          $.each( other_inputs, function() {
-            $(this).val(creds)
-            url = $(this).parent().parent()[0].id
-            socket.emit("update_record", {"url": url, "key": "default_creds", "value": creds})
-          })
-        });
-
-        $(document).on('click', '.auth_prompt', function () {
-          is_checked = $(this).is(':checked')
-          url = $(this).parent().parent()[0].id
-          if(is_checked){
-           socket.emit("update_record", {"url": url, "key": "auth_prompt", "value": 1})
-          }else{
-           socket.emit("update_record", {"url": url, "key": "auth_prompt", "value": 0})
-          }
-        });
-
-        $(document).on('click', '.mass_auth_prompt', function () {
-          is_checked = $(this).is(':checked')
-          other_checkboxes = $(this).parent().parent().parent().find('.auth_prompt')
-          $.each( other_checkboxes, function() {
-            if(($(this).is(':checked')) != is_checked){
-              $(this).click()
-            }
-          })
-        });
-
-        $(document).on('focusout', '.url_notes', function () {
-          notes = $(this).val()
-          url = $(this).parent().parent()[0].id
-          socket.emit("update_record", {"url": url, "key": "notes", "value": notes})
-        });
-
-        $(document).on('focusout', '.mass_url_notes', function () {
-          notes = $(this).val()
-          other_inputs = $(this).parent().parent().parent().find('.url_notes')
-          $.each( other_inputs, function() {
-            $(this).val(notes)
-            url = $(this).parent().parent()[0].id
-            socket.emit("update_record", {"url": url, "key": "notes", "value": notes})
-          })
-        });
-
-        $("#select_file").click(function(){
-          use_proxy = $('#proxy_checkbox').is(':checked')
-          use_no_sandbox = $('#sandbox_checkbox').is(':checked')
-          scrape_emails = $('#scrape_emails_checkbox').is(':checked')
-          proxy_setting = $('#proxy_input').val()
-          delay_setting = $('#delay_input').val()
-          file_path = prompt("Provide a full file path to your input file:")
-          socket.emit('process_file', {"file_path": file_path, "use_proxy": use_proxy, "proxy_setting": proxy_setting, "delay_setting": delay_setting, "scrape_emails": scrape_emails, "use_no_sandbox": use_no_sandbox})
-        });
-
-        $("#pause_scan").click(function(){
-          socket.emit('pause_scan')
-        });
-
-        $("#resume_scan").click(function(){
-          use_proxy = $('#proxy_checkbox').is(':checked')
-          use_no_sandbox = $('#sandbox_checkbox').is(':checked')
-          scrape_emails = $('#scrape_emails_checkbox').is(':checked')
-          proxy_setting = $('#proxy_input').val()
-          delay_setting = $('#delay_input').val()
-          socket.emit('resume_scan', {"use_proxy": use_proxy, "proxy_setting": proxy_setting, "delay_setting": delay_setting, "scrape_emails": scrape_emails, "use_no_sandbox": use_no_sandbox})
-        });
-
-        $("#scan_errors").click(function(){
-          use_proxy = $('#proxy_checkbox').is(':checked')
-          use_no_sandbox = $('#sandbox_checkbox').is(':checked')
-          scrape_emails = $('#scrape_emails_checkbox').is(':checked')
-          proxy_setting = $('#proxy_input').val()
-          delay_setting = $('#delay_input').val()
-          socket.emit('scan_errors', {"use_proxy": use_proxy, "proxy_setting": proxy_setting, "delay_setting": delay_setting, "scrape_emails": scrape_emails, "use_no_sandbox": use_no_sandbox})
-        });
-
-        $("#auth_prompts_only").click(function(){
-          $("#errors").empty()
-          $("#report").empty()
-          $.getJSON( "/auth_prompts", function( data ) {
-            $.each( data, function(key, val ) {
-              add_service(val)
-            });
-          });
-        });
-
-        $("#unviewed_only").click(function(){
-          $("#errors").empty()
-          $("#report").empty()
-          $.getJSON( "/unviewed_services", function( data ) {
-            $.each( data, function(key, val ) {
-              add_service(val)
-            });
-          });
-        });
-
-        $("#notes_only").click(function(){
-          $("#errors").empty()
-          $("#report").empty()
-          $.getJSON( "/notes_services", function( data ) {
-            $.each( data, function(key, val ) {
-              add_service(val)
-            });
-          });
-        });
-
-        $("#show_all").click(function(){
-          location.reload();
-        });
-
-        $("#csv_export").click(function(){
-          csv_name = prompt("Provide a base name for your results .csv file:")
-          socket.emit('csv_export', {"csv_name": csv_name + ".csv"})
-        });
-
-        $("#report_export").click(function(){
-          zip_name = prompt("Provide a base name for your results .zip file:")
-          socket.emit('report_export', {"zip_name": zip_name + ".zip"})
-        });
-
-        $.getJSON( "/all_services", function( data ) {
-          $.each( data, function(key, val ) {
-            if(val.captured == 1){
-              add_service(val)
-            }else{
-              show_error(val.url)
-            }
-          });
-        });
-      });
-    </script>
-  </head>
-  <body>
-    <button id="select_file">Select Input File</button>
-    <span>Use Proxy:</span><input type="checkbox" id="proxy_checkbox"></input>
-    <input type="text" id="proxy_input" placeholder="socks5://localhost:8080"></input>
-    <span>Delay:</span><input type="text" id="delay_input" value="0" style="width: 3ch;"></input>
-    <span>No Sandbox (dangerous):</span><input type="checkbox" id="sandbox_checkbox"></input>
-    <span>Scrape Emails:</span><input type="checkbox" id="scrape_emails_checkbox"></input>
-    <button id="pause_scan">Pause Scan</button>
-    <button id="resume_scan">Resume Scan</button>
-    <button id="scan_errors">Rescan Errors</button>
-    <button id="show_all">Show All</button>
-    <button id="auth_prompts_only">Show Auth Prompts Only</button>
-    <button id="unviewed_only">Show Unviewed Only</button>
-    <button id="notes_only">Show Weak/Notes Only</button>
-    <button id="csv_export">Export CSV</button>
-    <button id="report_export">Report Export</button>
-    <ul id="server_log"></ul>
-    <table id="errors">
-    </table>
-    <div id="report">
+  <span>INPUTS:</span><button id="select_file">Select Input File</button>
+  <span>Use Proxy:</span><input title="Use Proxy" type="checkbox" id="proxy_checkbox">
+  <input type="text" id="proxy_input" placeholder="socks5://localhost:8080">
+  <span>Timeout:</span><input title="Timeout" type="text" id="timeout_input" value="10">
+  <br>
+  <br>
+  <span>CONTROLS:</span><button id="pause_scan">Pause Scan</button>
+  <button id="resume_scan">Resume Scan</button>
+  <button id="scan_errors">Rescan Errors</button>
+  <button id="csv_export">Export CSV</button>
+  <button id="report_export">Report Export</button>
+  <br>
+  <br>
+  <span>FILTERS:</span><button id="show_all">Show All</button>
+  <button id="auth_prompts_only">Show Auth Prompts Only</button>
+  <button id="unviewed_only">Show Unviewed Only</button>
+  <button id="notes_only">Show Weak/Notes Only</button>
+  <br>
+  <br>
+  <span>SEARCH:</span><span>Title:</span><input type="text" id="title_input" placeholder="title">
+  <span>Headers:</span><input type="text" id="header_input" placeholder="header">
+  <span>Metatags:</span><input type="text" id="metatag_input" placeholder="metatag">
+  <button id="search">Search</button>
+  <ul id="server_log"></ul>
+  <table id="errors">
+  </table>
+  <div id="report">
+    <div id="num_tags_0">
     </div>
-  </body>
+  </div>
+
+
+</body>
+
 </html>
